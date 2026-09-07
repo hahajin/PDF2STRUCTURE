@@ -12,11 +12,13 @@ import { usePdfFit } from './usePdfFit';
 export const PdfViewer = forwardRef<{ handleFitWidth: () => void; handleFitPage: () => void }, {}>((_, ref) => {
   const dispatch = useAppDispatch();
   const { document, loadPdf } = usePdfDocument();
+
   const scale = useAppSelector((state) => state.pdf.scale);
   const currentPage = useAppSelector((state) => state.pdf.currentPage);
   const totalPages = useAppSelector((state) => state.pdf.totalPages);
   const rotation = useAppSelector((state) => state.pdf.pageRotation);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dimPdfBackground = useAppSelector((state) => state.ui.dimPdfBackground);  
 
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -27,7 +29,12 @@ export const PdfViewer = forwardRef<{ handleFitWidth: () => void; handleFitPage:
 
   useImperativeHandle(ref, () => ({ handleFitWidth, handleFitPage }));
 
-  const handleFileSelect = useCallback((file: File) => loadPdf(file), [loadPdf]);
+  // 空白画布模式状态
+  const [isBlankMode, setIsBlankMode] = useState(false);
+  const handleFileSelect = useCallback((file: File) => {
+    setIsBlankMode(false); // 选择文件时退出空白模式
+    loadPdf(file);
+  }, [loadPdf]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (e.ctrlKey) {
@@ -70,8 +77,37 @@ export const PdfViewer = forwardRef<{ handleFitWidth: () => void; handleFitPage:
     };
   }, [dispatch, currentPage, totalPages, scale]);
 
-  if (!document) {
-    return <PdfDropZone onFileSelect={handleFileSelect} />;
+  // 👇 修改渲染逻辑：分三种情况处理
+  // 1. 无 PDF 且非空白模式：显示上传区域
+  if (!document && !isBlankMode) {
+    return <PdfDropZone onFileSelect={handleFileSelect} onBlankCanvas={() => setIsBlankMode(true)} />;
+  }
+
+  // 2. 无 PDF 但处于空白模式：显示空白建模画布
+  if (!document && isBlankMode) {
+    return (
+      <div className="flex flex-col h-full w-full bg-editor-workspace relative">
+        <div
+          ref={containerRef}
+          className="relative flex-1 overflow-hidden select-none"
+          style={{ cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : 'default' }}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <div className="absolute inset-0 flex items-center justify-center">
+            {/* 空白画布容器，给予最小尺寸以确保交互区域存在 */}
+            <div className="relative shadow-sm bg-white w-full h-full min-w-[800px] min-h-[600px]">
+              <AnnotationCanvas />
+              <DimensionOverlay />
+            </div>
+          </div>
+          <LegendPanel />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -92,6 +128,14 @@ export const PdfViewer = forwardRef<{ handleFitWidth: () => void; handleFitPage:
         >
           <div className="relative shadow-sm bg-white">
             <PdfCanvas document={document} />
+
+            {/* --- 新增：PDF 背景淡显遮罩层 --- */}
+            {/* z-[5] 确保它在 PDF (z-0) 之上，但在 AnnotationCanvas (z-10) 之下 */}
+            {/* pointer-events-none 确保它不会阻挡鼠标与下方标注 Canvas 的交互 */}
+            {dimPdfBackground && (
+              <div className="absolute inset-0 bg-white/60 pointer-events-none z-[5]" />
+            )}
+
             <AnnotationCanvas />
             <DimensionOverlay />
           </div>

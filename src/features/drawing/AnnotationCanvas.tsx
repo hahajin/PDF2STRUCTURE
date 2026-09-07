@@ -60,6 +60,10 @@ export function AnnotationCanvas() {
   const [textInput, setTextInput] = useState('');
   const [canvasSizeVersion, setCanvasSizeVersion] = useState(0);
 
+  // 在组件内部添加状态读取
+  const showElementLabels = useAppSelector((state) => state.ui.showElementLabels);
+  const showElementSections = useAppSelector((state) => state.ui.showElementSections);
+
   /*
    * Make sure the current page has a
    * coordinate system.
@@ -154,24 +158,103 @@ export function AnnotationCanvas() {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // 应用全局缩放 (包含设备像素比和用户缩放)
       ctx.setTransform(displayScale * dpr, 0, 0, displayScale * dpr, 0, 0);
+
+
+      // =========================================================
+      // 👇 新增：自适应网格 (Grid) 绘制逻辑
+      // =========================================================
+      ctx.save();
+
+      // 1. 动态计算网格步长，目标是让屏幕上的网格间距保持在 40px ~ 80px 之间
+      const targetScreenStep = 50; 
+      let logicalStep = targetScreenStep / displayScale;
+      
+      // 2. 将步长规整为美观的数字 (如 10, 20, 50, 100, 200...)
+      const magnitude = Math.pow(10, Math.floor(Math.log10(logicalStep)));
+      const residual = logicalStep / magnitude;
+      let niceStep = magnitude;
+      if (residual > 5) niceStep = magnitude * 10;
+      else if (residual > 2) niceStep = magnitude * 5;
+      else if (residual > 1) niceStep = magnitude * 2;
+
+      // 3. 设置网格线样式 (保持屏幕上始终为 1px 细线)
+      ctx.strokeStyle = '#e5e7eb'; // Tailwind gray-200 (浅灰色)
+      ctx.lineWidth = 1 / (displayScale * dpr); 
+      ctx.beginPath();
+
+      // 4. 绘制网格线 (覆盖当前可视区域，并稍微向外扩展一个步长以防平移时出现空白)
+      const gridEndX = width + niceStep;
+      const gridEndY = height + niceStep;
+
+      for (let x = 0; x <= gridEndX; x += niceStep) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, gridEndY);
+      }
+      for (let y = 0; y <= gridEndY; y += niceStep) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(gridEndX, y);
+      }
+      ctx.stroke();
+
+      // 5. 绘制 X=0 和 Y=0 的主轴线 (稍微加深，作为绝对参考系)
+      ctx.strokeStyle = '#9ca3af'; // Tailwind gray-400 (中灰色)
+      ctx.lineWidth = 2 / (displayScale * dpr);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(gridEndX, 0); // X 轴
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, gridEndY); // Y 轴
+      ctx.stroke();
+
+      ctx.restore();
+      // =========================================================
+      // 👆 网格绘制结束
+      // =========================================================
+
+
 
       const visible = new Set(
         layers.filter((layer) => layer.visible).map((layer) => layer.id)
       );
 
-      shapes.forEach((shape) => {
-        if (visible.has(shape.layerId)) {
-          renderShape(
-            ctx,
-            shape,
-            selectedShapes.some((selected) => selected.id === shape.id)
-          );
-        }
+      // 在 useEffect 的渲染循环中，使用两阶段渲染以确保节点 (point) 总是在最上层可见：
+      const visibleShapes = shapes.filter((s) => visible.has(s.layerId));
+
+      const nonPointShapes = visibleShapes.filter((s) => s.type !== 'point');
+      const pointShapes = visibleShapes.filter((s) => s.type === 'point');
+
+      nonPointShapes.forEach((shape) => {
+        renderShape(
+          ctx,
+          shape,
+          selectedShapes.some((selected) => selected.id === shape.id),
+          {
+            showLabels: showElementLabels,
+            showSections: showElementSections,
+          }
+        );
+      });
+
+      // 把点绘制在最后，保证它们不会被梁等线条覆盖
+      pointShapes.forEach((shape) => {
+        renderShape(
+          ctx,
+          shape,
+          selectedShapes.some((selected) => selected.id === shape.id),
+          {
+            showLabels: showElementLabels,
+            showSections: showElementSections,
+          }
+        );
       });
 
       if (tempShape) {
-        renderShape(ctx, tempShape, false);
+        renderShape(ctx, tempShape, false, {
+          showLabels: showElementLabels,
+          showSections: showElementSections,
+        });
       }
 
       if (selectionRect) {

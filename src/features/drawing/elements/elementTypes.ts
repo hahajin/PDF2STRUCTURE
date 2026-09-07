@@ -1,6 +1,7 @@
 import type { PagePoint } from '@/core/coordinate/coordinateTypes';
 
 export type StructuralElementType =
+  | 'node'
   | 'column'
   | 'beam'
   | 'wall'
@@ -26,6 +27,11 @@ export interface StructuralBase {
   createdAt: string;
   updatedAt: string;
   zIndex: number;
+}
+
+export interface NodeGeometry {
+  x: number;
+  y: number;
 }
 
 export interface ColumnGeometry {
@@ -59,6 +65,16 @@ export interface PortalFrameGeometry {
   beamDepth: number;
 }
 
+export interface NodeElement extends StructuralBase {
+  type: 'node';
+  geometry: NodeGeometry;
+  properties: {
+    label: string;
+    x?: number;
+    y?: number;
+  };
+}
+
 export interface ColumnElement extends StructuralBase {
   type: 'column';
   geometry: ColumnGeometry;
@@ -66,6 +82,7 @@ export interface ColumnElement extends StructuralBase {
     label: string;
     section: string;
     material: string;
+    nodeId?: string;
   };
 }
 export interface BeamElement extends StructuralBase {
@@ -75,6 +92,8 @@ export interface BeamElement extends StructuralBase {
     label: string;
     section: string;
     material: string;
+    startNodeId?: string;
+    endNodeId?: string;
   };
 }
 export interface WallElement extends StructuralBase {
@@ -84,6 +103,8 @@ export interface WallElement extends StructuralBase {
     label: string;
     wallType: string;
     material: string;
+    startNodeId?: string;
+    endNodeId?: string;
   };
 }
 export interface SlabElement extends StructuralBase {
@@ -103,12 +124,15 @@ export interface PortalFrameElement extends StructuralBase {
     label: string;
     section: string;
     material: string;
+    startNodeId?: string;
+    endNodeId?: string;
   };
 }
 
 export type StructuralElement =
+  | NodeElement
   | ColumnElement
   | BeamElement
   | WallElement
   | SlabElement
-  | PortalFrameElement;
+  | PortalFrameElement

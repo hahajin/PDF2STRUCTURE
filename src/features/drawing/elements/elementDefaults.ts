@@ -117,9 +117,11 @@ export const ELEMENT_COLORS = {
   wallCenterline: '#7c3aed',
   portalColumn: '#2563eb',
   portalBeam: '#dc2626',
+  slab: '#059669',
 } as const;
 
 export const prefixForType = (type: StructuralElementType): string => ({
+  node: 'N',
   column: 'C',
   beam: 'B',
   wall: 'W',
@@ -128,6 +130,7 @@ export const prefixForType = (type: StructuralElementType): string => ({
 }[type]);
 
 export const structuralTypeLabel = (type: StructuralElementType): string => ({
+  node: 'Nodes',
   column: 'Columns',
   beam: 'Beams',
   wall: 'Walls',
