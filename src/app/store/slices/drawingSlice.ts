@@ -5,7 +5,7 @@ import type { RootState } from '../index';
 import type { StructuralElement, StructuralElementType } from '@/features/drawing/elements/elementTypes';
 
 export type ToolType =
-  | 'select' | 'column' | 'beam' | 'wall' | 'slab' | 'portalFrame'
+  | 'select' | 'column' | 'beam' | 'wall' | 'slab' | 'portalFrame' | 'rectSlab'
   | 'point' | 'line' | 'polyline' | 'polygon' | 'rectangle' | 'circle'
   | 'text' | 'measure' | 'eraser';
 
@@ -216,15 +216,14 @@ export const drawingSlice = createSlice({
       if (a.payload !== 'select') s.selectedShapeIds = [];
     },
 
-    addShape: (s, a: PayloadAction<Omit<Shape, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    addShape: (s, a: PayloadAction<Omit<Shape, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }>) => {
       const now = new Date().toISOString();
       const shape = {
         ...a.payload,
-        id: nanoid(),
+        id: a.payload.id ?? nanoid(), // 优先使用传入的 id，否则自动生成
         createdAt: now,
         updatedAt: now,
       } as Shape;
-
       s.shapes.push(shape);
       s.selectedShapeIds = [shape.id];
     },
