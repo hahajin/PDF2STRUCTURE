@@ -1,15 +1,117 @@
+import { useMemo } from 'react';
 import { useAppSelector } from '@/app/store/hooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayerPanel } from '@/features/layers/LayerPanel';
 import { TreeViewPanel } from '@/features/tree-view/TreeViewPanel';
-import { SelectedObjectProperties } from '@/components/properties/SelectedObjectProperties';
+import { LayerPanel } from '@/features/layers/LayerPanel';
 import { PropertiesLibraryTree } from '@/components/properties/PropertiesLibraryTree';
 import { Layers, TreePine, Sliders } from 'lucide-react';
 
+const normalizeName = (value: string) =>
+  value.toLowerCase().replace(/[×x\s_\-]/g, '');
+
 export function InspectorPanel() {
-  const hasStructuralSelection = useAppSelector((state) => {
-    const selected = new Set(state.drawing.selectedShapeIds);
-    return state.drawing.shapes.some((shape) => selected.has(shape.id) && 'geometry' in shape);
+  const shapes = useAppSelector((state) => state.drawing.shapes);
+  const selectedIds = useAppSelector((state) => state.drawing.selectedShapeIds);
+
+  const selectedPropertyRefs = useMemo(() => {
+    const selected = shapes.find(
+      (shape) => selectedIds.includes(shape.id) && 'geometry' in shape,
+    ) as any;
+
+    if (!selected) {
+      return {
+        materialId: undefined,
+        sectionId: undefined,
+        materialName: undefined,
+        sectionName: undefined,
+      };
+    }
+
+    let source = selected;
+
+    if (selected.type === 'node') {
+      const connected = shapes.find((shape: any) => {
+        if (!('geometry' in shape) || shape.type === 'node') return false;
+        const p = shape.properties ?? {};
+
+        return (
+          p.nodeId === selected.id ||
+          p.startNodeId === selected.id ||
+          p.endNodeId === selected.id ||
+          p.nodeId === selected.label ||
+          p.startNodeId === selected.label ||
+          p.endNodeId === selected.label
+        );
+      });
+
+      if (connected) source = connected;
+    }
+
+    const properties = source.properties ?? {};
+
+    return {
+      materialId:
+        typeof properties.materialId === 'string'
+          ? properties.materialId
+          : undefined,
+      sectionId:
+        typeof properties.sectionId === 'string'
+          ? properties.sectionId
+          : undefined,
+      materialName:
+        typeof properties.material === 'string'
+          ? properties.material
+          : undefined,
+      sectionName:
+        typeof properties.section === 'string'
+          ? properties.section
+          : undefined,
+    };
+  }, [shapes, selectedIds]);
+
+  const materialId = useAppSelector((state) => {
+    const ref = selectedPropertyRefs;
+
+    if (ref.materialId && state.properties.materials.some((item) => item.id === ref.materialId)) {
+      return ref.materialId;
+    }
+
+    if (!ref.materialName) return undefined;
+
+    const exact = state.properties.materials.find(
+      (material) =>
+        material.name.toLowerCase() === ref.materialName!.toLowerCase(),
+    );
+
+    if (exact) return exact.id;
+
+    return state.properties.materials.find(
+      (material) =>
+        material.type.toLowerCase() === ref.materialName!.toLowerCase(),
+    )?.id;
+  });
+
+  const sectionId = useAppSelector((state) => {
+    const ref = selectedPropertyRefs;
+
+    if (ref.sectionId && state.properties.sections.some((item) => item.id === ref.sectionId)) {
+      return ref.sectionId;
+    }
+
+    if (!ref.sectionName) return undefined;
+
+    const normalized = normalizeName(ref.sectionName);
+
+    const exact = state.properties.sections.find(
+      (section) => normalizeName(section.name) === normalized,
+    );
+
+    if (exact) return exact.id;
+
+    return state.properties.sections.find((section) => {
+      const candidate = normalizeName(section.name);
+      return candidate.startsWith(normalized) || normalized.startsWith(candidate);
+    })?.id;
   });
 
   return (
@@ -31,17 +133,11 @@ export function InspectorPanel() {
           <TreeViewPanel />
         </TabsContent>
 
-        <TabsContent value="properties" className="flex-1 min-h-0 overflow-hidden mt-0">
-          <div className="flex h-full min-h-0 flex-col">
-            {hasStructuralSelection && (
-              <div className="max-h-[48%] min-h-0 overflow-y-auto border-b border-border">
-                <SelectedObjectProperties />
-              </div>
-            )}
-            <div className="min-h-0 flex-1 overflow-y-auto p-2">
-              <PropertiesLibraryTree />
-            </div>
-          </div>
+        <TabsContent value="properties" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2">
+          <PropertiesLibraryTree
+            selectedMaterialId={materialId}
+            selectedSectionId={sectionId}
+          />
         </TabsContent>
 
         <TabsContent value="tree" className="flex-1 overflow-y-auto mt-0 p-2">

@@ -1,13 +1,23 @@
 import { useState } from 'react';
 import {
-  FileText, Undo2, Redo2, Save, Download, Wrench,
-  PanelLeft, PanelLeftClose,
-  PanelRight, PanelRightClose,
+  FileText,
+  Undo2,
+  Redo2,
+  Save,
+  Download,
+  Wrench,
+  PanelLeft,
+  PanelLeftClose,
+  PanelRight,
+  PanelRightClose,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DisplaySettingsDialog } from './DisplaySettingsDialog';
 import { MaterialManagerDialog } from './MaterialManagerDialog';
 import { SectionManagerDialog } from './SectionManagerDialog';
+import { LoadCaseDialog } from './LoadCaseDialog';
+import { LoadCombinationDialog } from './LoadCombinationDialog';
+import { AssignLoadsDialog } from './AssignLoadsDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +28,7 @@ import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
 import { toggleLeftPanel, toggleRightPanel, toggleToolbar } from '@/app/store/slices/uiSlice';
 import type { SectionType } from '@/core/section/sectionGeometry';
 import type { Material } from '@/app/store/slices/propertiesSlice';
+import type { StructuralElement } from '@/features/drawing/elements/elementTypes';
 
 const SECTION_MENU_ITEMS: Array<{ value: SectionType; label: string }> = [
   { value: 'Rectangular', label: 'Rectangular' },
@@ -41,6 +52,11 @@ export function AppHeader() {
   const leftPanelOpen = useAppSelector((state) => state.ui.leftPanelOpen);
   const rightPanelOpen = useAppSelector((state) => state.ui.rightPanelOpen);
   const toolbarCollapsed = useAppSelector((state) => state.ui.toolbarCollapsed);
+  const selectedElement = useAppSelector((state) => {
+    const selectedId = state.drawing.selectedShapeIds[0];
+    const shape = state.drawing.shapes.find((item) => item.id === selectedId);
+    return shape && 'geometry' in shape ? shape as StructuralElement : null;
+  });
 
   const [isMaterialMenuOpen, setIsMaterialMenuOpen] = useState(false);
   const [isMaterialManagerOpen, setIsMaterialManagerOpen] = useState(false);
@@ -48,6 +64,10 @@ export function AppHeader() {
   const [isSectionMenuOpen, setIsSectionMenuOpen] = useState(false);
   const [isSectionManagerOpen, setIsSectionManagerOpen] = useState(false);
   const [sectionInitialType, setSectionInitialType] = useState<SectionType>('Rectangular');
+  const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
+  const [isLoadCaseDialogOpen, setIsLoadCaseDialogOpen] = useState(false);
+  const [isLoadCombinationDialogOpen, setIsLoadCombinationDialogOpen] = useState(false);
+  const [isAssignLoadsDialogOpen, setIsAssignLoadsDialogOpen] = useState(false);
 
   const openMaterialManager = (type: Material['type']) => {
     setMaterialInitialType(type);
@@ -59,6 +79,12 @@ export function AppHeader() {
     setSectionInitialType(type);
     setIsSectionManagerOpen(true);
     setIsSectionMenuOpen(false);
+  };
+
+  const openAssignLoads = () => {
+    if (!selectedElement) return;
+    setIsAssignLoadsDialogOpen(true);
+    setIsLoadMenuOpen(false);
   };
 
   return (
@@ -117,6 +143,41 @@ export function AppHeader() {
                 ))}
                 <DropdownMenuItem onClick={() => openSectionManager('Custom')}>
                   Custom Properties
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu open={isLoadMenuOpen} onOpenChange={setIsLoadMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="px-3 py-1.5 rounded hover:bg-editor-hover hover:text-foreground transition-colors"
+                  onPointerEnter={() => setIsLoadMenuOpen(true)}
+                >
+                  Load
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56" onPointerLeave={() => setIsLoadMenuOpen(false)}>
+                <DropdownMenuItem
+                  disabled={!selectedElement}
+                  onClick={openAssignLoads}
+                >
+                  Assign Loads{selectedElement ? ' — ' + selectedElement.label : ''}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setIsLoadCaseDialogOpen(true);
+                    setIsLoadMenuOpen(false);
+                  }}
+                >
+                  Load Case Definitions
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setIsLoadCombinationDialogOpen(true);
+                    setIsLoadMenuOpen(false);
+                  }}
+                >
+                  Load Combination Definitions
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -181,6 +242,19 @@ export function AppHeader() {
         open={isSectionManagerOpen}
         onOpenChange={setIsSectionManagerOpen}
         initialType={sectionInitialType}
+      />
+      <LoadCaseDialog
+        open={isLoadCaseDialogOpen}
+        onOpenChange={setIsLoadCaseDialogOpen}
+      />
+      <LoadCombinationDialog
+        open={isLoadCombinationDialogOpen}
+        onOpenChange={setIsLoadCombinationDialogOpen}
+      />
+      <AssignLoadsDialog
+        open={isAssignLoadsDialogOpen}
+        onOpenChange={setIsAssignLoadsDialogOpen}
+        element={selectedElement}
       />
     </>
   );
