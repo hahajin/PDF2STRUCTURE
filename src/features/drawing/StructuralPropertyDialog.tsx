@@ -60,9 +60,9 @@ function getElementFields(element: StructuralElement | null): string[] {
     case 'node':
       return ['label'];
     case 'column':
-      return ['label', 'width', 'depth', 'rotation'];
+      return ['label', 'rotation'];
     case 'beam':
-      return ['label', 'width', 'depth'];
+      return ['label'];
     case 'wall':
       return ['label', 'thickness', 'wallType'];
     case 'slab':
@@ -71,10 +71,6 @@ function getElementFields(element: StructuralElement | null): string[] {
       return [
         'label',
         'height',
-        'columnWidth',
-        'columnDepth',
-        'beamWidth',
-        'beamDepth',
       ];
     default:
       return [];
@@ -238,7 +234,6 @@ export function StructuralPropertyDialog({
   );
 
   const [draft, setDraft] = useState<Record<string, string>>({});
-  const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [assignLoadsOpen, setAssignLoadsOpen] = useState(false);
 
@@ -258,10 +253,6 @@ export function StructuralPropertyDialog({
         resolvedMaterialId,
       ),
     [element, sections, materials, resolvedMaterialId],
-  );
-
-  const selectedMaterial = materials.find(
-    (material) => material.id === selectedMaterialId,
   );
 
   const selectedSection = sections.find(
@@ -354,7 +345,6 @@ export function StructuralPropertyDialog({
       ),
     );
 
-    setSelectedMaterialId(resolvedMaterialId);
     setSelectedSectionId(resolvedSectionId);
   }, [
     element,
@@ -402,17 +392,6 @@ export function StructuralPropertyDialog({
 
     p.label = draft.label || element.label;
 
-    if (hasMaterial(element)) {
-      const material = materials.find(
-        (item) => item.id === selectedMaterialId,
-      );
-
-      if (material) {
-        p.materialId = material.id;
-        p.material = material.name;
-      }
-    }
-
     if (hasSection(element)) {
       const section = sections.find(
         (item) => item.id === selectedSectionId,
@@ -421,6 +400,29 @@ export function StructuralPropertyDialog({
       if (section) {
         p.sectionId = section.id;
         p.section = section.name;
+
+        // Section owns the material association. Keep both IDs/text in sync
+        // so legacy rendering/import code remains backward compatible.
+        const material = materials.find(
+          (item) => item.id === section.materialId,
+        );
+
+        if (material) {
+          p.materialId = material.id;
+          p.material = material.name;
+        }
+      }
+    } else if (hasMaterial(element)) {
+      // Non-sectioned members keep a read-only material assignment. When
+      // possible, normalize its display name from the linked material record.
+      const material =
+        typeof p.materialId === 'string'
+          ? materials.find((item) => item.id === p.materialId)
+          : undefined;
+
+      if (material) {
+        p.materialId = material.id;
+        p.material = material.name;
       }
     }
 
@@ -485,63 +487,74 @@ export function StructuralPropertyDialog({
               </div>
             ))}
 
-            {hasMaterial(element) && (
-              <div className="space-y-1">
-                <Label className="text-xs">Material</Label>
-                <Select
-                  value={selectedMaterialId}
-                  onValueChange={setSelectedMaterialId}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select material" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {!selectedMaterial && (
-                  <div className="text-[10px] text-amber-600">
-                    Current material is not linked to the material library.
+            {hasSection(element) ? (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs">Section</Label>
+                  <Select
+                    value={selectedSectionId}
+                    onValueChange={setSelectedSectionId}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sections.map((section) => {
+                        const material =
+                          materials.find(
+                            (item) => item.id === section.materialId,
+                          )?.name ?? 'No Material';
+
+                        return (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.name} · {material}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {!selectedSection && (
+                    <div className="text-[10px] text-amber-600">
+                      Current section is not linked to the section library.
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Material (from Section)</Label>
+                  <div className="flex h-9 items-center rounded-md border bg-muted/30 px-3 text-sm">
+                    {selectedSection
+                      ? materials.find(
+                          (item) => item.id === selectedSection.materialId,
+                        )?.name ?? 'No Material'
+                      : '—'}
                   </div>
-                )}
-              </div>
-            )}
-
-            {hasSection(element) && (
-              <div className="space-y-1">
-                <Label className="text-xs">Section</Label>
-                <Select
-                  value={selectedSectionId}
-                  onValueChange={setSelectedSectionId}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sections.map((section) => {
-                      const material =
-                        materials.find(
-                          (item) => item.id === section.materialId,
-                        )?.name ?? 'No Material';
-
+                  <div className="text-[10px] text-muted-foreground">
+                    Material is controlled by the selected section.
+                  </div>
+                </div>
+              </>
+            ) : (
+              hasMaterial(element) && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Material</Label>
+                  <div className="flex h-9 items-center rounded-md border bg-muted/30 px-3 text-sm">
+                    {(() => {
+                      const materialId = (element.properties as any).materialId;
                       return (
-                        <SelectItem key={section.id} value={section.id}>
-                          {section.name} · {material}
-                        </SelectItem>
+                        (typeof materialId === 'string'
+                          ? materials.find((item) => item.id === materialId)?.name
+                          : undefined) ??
+                        (element.properties as any).material ??
+                        'Unassigned'
                       );
-                    })}
-                  </SelectContent>
-                </Select>
-                {!selectedSection && (
-                  <div className="text-[10px] text-amber-600">
-                    Current section is not linked to the section library.
+                    })()}
                   </div>
-                )}
-              </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Edit material definitions from the Properties library.
+                  </div>
+                </div>
+              )
             )}
           </div>
 
