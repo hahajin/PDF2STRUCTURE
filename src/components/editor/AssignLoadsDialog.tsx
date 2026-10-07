@@ -211,6 +211,7 @@ export function AssignLoadsDialog({
       }),
     );
     resetEdit();
+    onOpenChange(false);
   };
 
   const deleteAssignment = (id: string) => {
