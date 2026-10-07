@@ -1,6 +1,7 @@
 // src/features/drawing/StructuralPropertyDialog.tsx
 
 import { useEffect, useMemo, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
 import { updateShape } from '@/app/store/slices/drawingSlice';
 import { deleteLoadAssignment } from '@/app/store/slices/loadAssignmentsSlice';
@@ -679,7 +680,7 @@ export function StructuralPropertyDialog({
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           onClick={() => deleteAssignment(assignment.id)}
                         >
-                          Delete
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
