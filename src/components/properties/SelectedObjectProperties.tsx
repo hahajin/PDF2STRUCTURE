@@ -13,6 +13,7 @@ import type {
 
 import { pagePtToRealMm } from '@/core/coordinate/engineeringScale';
 import type { Material, Section } from '@/app/store/slices/propertiesSlice';
+import type { LoadAssignment } from '@/app/store/slices/loadAssignmentsSlice';
 
 
 // ============================================================================
@@ -243,6 +244,97 @@ function pagePtLengthToMm(
   );
 }
 
+
+function formatAssignmentLoad(
+  assignment: LoadAssignment,
+  caseName: string,
+): string {
+  if (assignment.loadType === 'Joint Load') {
+    return (
+      caseName +
+      ' · Fx ' + (assignment.fx ?? 0) +
+      ' kN · Fy ' + (assignment.fy ?? 0) +
+      ' kN · Fz ' + (assignment.fz ?? 0) +
+      ' kN · Mx ' + (assignment.mx ?? 0) +
+      ' kN·m · My ' + (assignment.my ?? 0) +
+      ' kN·m · Mz ' + (assignment.mz ?? 0) + ' kN·m'
+    );
+  }
+
+  if (assignment.loadType === 'Area Load') {
+    return (
+      caseName +
+      ' · ' + (assignment.pressure ?? 0) +
+      ' kPa · ' + (assignment.direction ?? 'Global Z')
+    );
+  }
+
+  if (assignment.loadType === 'Frame Point Load') {
+    return (
+      caseName +
+      ' · P ' + (assignment.magnitudeStart ?? 0) +
+      ' kN · ' + (assignment.direction ?? 'Global Z') +
+      ' · x=' + (assignment.distanceFromStart ?? 0) + ' m'
+    );
+  }
+
+  return (
+    caseName +
+    ' · w ' + (assignment.magnitudeStart ?? 0) +
+    ' → ' + (assignment.magnitudeEnd ?? assignment.magnitudeStart ?? 0) +
+    ' kN/m · ' + (assignment.direction ?? 'Global Z')
+  );
+}
+
+function SelectedElementLoads({
+  element,
+}: {
+  element: StructuralElement;
+}) {
+  const assignments = useAppSelector((state) =>
+    state.loadAssignments.assignments.filter(
+      (assignment) => assignment.targetId === element.id,
+    ),
+  );
+  const loadCases = useAppSelector((state) => state.loads.loadCases);
+
+  const caseName = (id: string) =>
+    loadCases.find((item) => item.id === id)?.name ?? 'Unknown Load Case';
+
+  return (
+    <PropertySection title={assignments.length ? `Loads (${assignments.length})` : 'Loads'}>
+      {assignments.length === 0 ? (
+        <div className="text-[11px] text-gray-400">
+          No loads assigned.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {assignments.map((assignment) => (
+            <div
+              key={assignment.id}
+              className="rounded border border-gray-100 bg-gray-50 px-2 py-1.5"
+            >
+              <div className="text-[11px] font-medium text-gray-700">
+                {assignment.loadType}
+              </div>
+              <div className="mt-0.5 text-[10px] leading-4 text-gray-500">
+                {formatAssignmentLoad(
+                  assignment,
+                  caseName(assignment.loadCaseId),
+                )}
+              </div>
+              {assignment.description && (
+                <div className="mt-0.5 text-[10px] text-gray-400">
+                  {assignment.description}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </PropertySection>
+  );
+}
 
 // ============================================================================
 // LOAD PLACEHOLDER
@@ -1134,6 +1226,8 @@ export function SelectedObjectProperties() {
             scaleDenominator={scaleDenominator}
           />
         )}
+
+        <SelectedElementLoads element={element} />
       </div>
     </div>
   );
