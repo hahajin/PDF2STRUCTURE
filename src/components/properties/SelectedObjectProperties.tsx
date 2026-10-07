@@ -337,38 +337,6 @@ function SelectedElementLoads({
 }
 
 // ============================================================================
-// LOAD PLACEHOLDER
-// ============================================================================
-
-function LoadsPlaceholder() {
-  return (
-    <PropertySection title="Loads">
-      <div className="space-y-1">
-        <PropertyRow
-          label="Point Load"
-          value={<EmptyValue>No loads</EmptyValue>}
-        />
-
-        <PropertyRow
-          label="Distributed Load"
-          value={<EmptyValue>No loads</EmptyValue>}
-        />
-
-        <PropertyRow
-          label="Moment"
-          value={<EmptyValue>No loads</EmptyValue>}
-        />
-      </div>
-
-      <div className="mt-2 rounded bg-gray-50 px-2 py-2 text-[10px] leading-4 text-gray-400">
-        Load assignment will be added in the structural analysis module.
-      </div>
-    </PropertySection>
-  );
-}
-
-
-// ============================================================================
 // NODE
 // ============================================================================
 
@@ -600,7 +568,6 @@ function ColumnProperties({
         />
       </PropertySection>
 
-      <LoadsPlaceholder />
     </>
   );
 }
@@ -712,7 +679,6 @@ function BeamProperties({
         />
       </PropertySection>
 
-      <LoadsPlaceholder />
     </>
   );
 }
@@ -809,7 +775,6 @@ function WallProperties({
         />
       </PropertySection>
 
-      <LoadsPlaceholder />
     </>
   );
 }
@@ -869,7 +834,6 @@ function SlabProperties({
         />
       </PropertySection>
 
-      <LoadsPlaceholder />
     </>
   );
 }
@@ -1024,7 +988,6 @@ function PortalFrameProperties({
         />
       </PropertySection>
 
-      <LoadsPlaceholder />
     </>
   );
 }
