@@ -11,9 +11,8 @@ import type {
   WallElement,
 } from '@/features/drawing/elements/elementTypes';
 
-import {
-  pagePtToRealMm,
-} from '@/core/coordinate/engineeringScale';
+import { pagePtToRealMm } from '@/core/coordinate/engineeringScale';
+import type { Material, Section } from '@/app/store/slices/propertiesSlice';
 
 
 // ============================================================================
@@ -164,6 +163,56 @@ function getElementTypeLabel(
   }
 }
 
+
+function findLinkedSection(
+  element: StructuralElement,
+  sections: Section[],
+): Section | undefined {
+  const properties = element.properties as any;
+
+  if (typeof properties.sectionId === 'string') {
+    const byId = sections.find((section) => section.id === properties.sectionId);
+    if (byId) return byId;
+  }
+
+  const sectionName =
+    typeof properties.section === 'string' ? properties.section : '';
+
+  if (!sectionName) return undefined;
+
+  return sections.find(
+    (section) => section.name.toLowerCase() === sectionName.toLowerCase(),
+  );
+}
+
+function findLinkedMaterial(
+  element: StructuralElement,
+  materials: Material[],
+  section?: Section,
+): Material | undefined {
+  const properties = element.properties as any;
+
+  if (section) {
+    const sectionMaterial = materials.find(
+      (material) => material.id === section.materialId,
+    );
+    if (sectionMaterial) return sectionMaterial;
+  }
+
+  if (typeof properties.materialId === 'string') {
+    const byId = materials.find(
+      (material) => material.id === properties.materialId,
+    );
+    if (byId) return byId;
+  }
+
+  const materialName =
+    typeof properties.material === 'string' ? properties.material : '';
+
+  return materials.find(
+    (material) => material.name.toLowerCase() === materialName.toLowerCase(),
+  );
+}
 
 // ============================================================================
 // GEOMETRY HELPERS
@@ -395,6 +444,11 @@ function ColumnProperties({
     scaleDenominator,
   );
 
+  const sections = useAppSelector((state) => state.properties.sections);
+  const materials = useAppSelector((state) => state.properties.materials);
+  const section = findLinkedSection(element, sections);
+  const material = findLinkedMaterial(element, materials, section);
+
   return (
     <>
       <PropertySection title="Column">
@@ -443,14 +497,14 @@ function ColumnProperties({
       <PropertySection title="Section">
         <PropertyRow
           label="Section"
-          value={element.properties.section}
+          value={section?.name ?? element.properties.section}
         />
       </PropertySection>
 
       <PropertySection title="Material">
         <PropertyRow
           label="Material"
-          value={element.properties.material}
+          value={material?.name ?? element.properties.material}
         />
       </PropertySection>
 
@@ -495,6 +549,11 @@ function BeamProperties({
     scaleNumerator,
     scaleDenominator,
   );
+
+  const sections = useAppSelector((state) => state.properties.sections);
+  const materials = useAppSelector((state) => state.properties.materials);
+  const section = findLinkedSection(element, sections);
+  const material = findLinkedMaterial(element, materials, section);
 
   return (
     <>
@@ -550,14 +609,14 @@ function BeamProperties({
       <PropertySection title="Section">
         <PropertyRow
           label="Section"
-          value={element.properties.section}
+          value={section?.name ?? element.properties.section}
         />
       </PropertySection>
 
       <PropertySection title="Material">
         <PropertyRow
           label="Material"
-          value={element.properties.material}
+          value={material?.name ?? element.properties.material}
         />
       </PropertySection>
 
@@ -596,6 +655,9 @@ function WallProperties({
     scaleNumerator,
     scaleDenominator,
   );
+
+  const materials = useAppSelector((state) => state.properties.materials);
+  const material = findLinkedMaterial(element, materials);
 
   return (
     <>
@@ -651,7 +713,7 @@ function WallProperties({
       <PropertySection title="Material">
         <PropertyRow
           label="Material"
-          value={element.properties.material}
+          value={material?.name ?? element.properties.material}
         />
       </PropertySection>
 
@@ -670,6 +732,9 @@ function SlabProperties({
 }: {
   element: SlabElement;
 }) {
+  const materials = useAppSelector((state) => state.properties.materials);
+  const material = findLinkedMaterial(element, materials);
+
   return (
     <>
       <PropertySection title="Slab">
@@ -708,7 +773,7 @@ function SlabProperties({
       <PropertySection title="Material">
         <PropertyRow
           label="Material"
-          value={element.properties.material}
+          value={material?.name ?? element.properties.material}
         />
       </PropertySection>
 
@@ -771,6 +836,11 @@ function PortalFrameProperties({
     scaleNumerator,
     scaleDenominator,
   );
+
+  const sections = useAppSelector((state) => state.properties.sections);
+  const materials = useAppSelector((state) => state.properties.materials);
+  const section = findLinkedSection(element, sections);
+  const material = findLinkedMaterial(element, materials, section);
 
   return (
     <>
@@ -851,14 +921,14 @@ function PortalFrameProperties({
       <PropertySection title="Section">
         <PropertyRow
           label="Section"
-          value={element.properties.section}
+          value={section?.name ?? element.properties.section}
         />
       </PropertySection>
 
       <PropertySection title="Material">
         <PropertyRow
           label="Material"
-          value={element.properties.material}
+          value={material?.name ?? element.properties.material}
         />
       </PropertySection>
 
