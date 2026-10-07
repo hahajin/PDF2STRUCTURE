@@ -85,12 +85,13 @@ export function PropertyEditorDialog({
     setError('');
 
     if (nodeType === 'material') {
+      const material = data as Material;
       setMaterialForm({
-        name: data.name,
-        type: data.type,
-        youngsModulus: data.youngsModulus,
-        poissonRatio: data.poissonRatio,
-        density: data.density,
+        name: material.name,
+        type: material.type,
+        youngsModulus: material.youngsModulus,
+        poissonRatio: material.poissonRatio,
+        density: material.density,
       });
       return;
     }
