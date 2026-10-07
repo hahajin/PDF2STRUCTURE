@@ -101,8 +101,10 @@ private start: { x: number; y: number } | null = null;
       label,
       properties: {
         label,
-        section: `${d.realWidth}×${d.realDepth}`,
+        section: d.section,
+        sectionId: d.sectionId,
         material: d.material,
+        materialId: d.materialId,
         startNodeId: nodeId,
         endNodeId: nodeId,
       },
