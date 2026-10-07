@@ -25,6 +25,7 @@ interface Props {
 const pageGeometryFields = new Set([
   'width',
   'depth',
+  'rotation',
   'thickness',
   'height',
   'columnWidth',
@@ -370,7 +371,8 @@ export function StructuralPropertyDialog({
 
       if (
         numericFields.has(key) &&
-        (!Number.isFinite(value as number) || (value as number) < 0)
+        (!Number.isFinite(value as number) ||
+          (key !== 'rotation' && (value as number) < 0))
       ) {
         return;
       }
