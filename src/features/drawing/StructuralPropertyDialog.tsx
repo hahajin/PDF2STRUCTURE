@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
 import { updateShape } from '@/app/store/slices/drawingSlice';
+import { deleteLoadAssignment } from '@/app/store/slices/loadAssignmentsSlice';
 import type { StructuralElement } from './elements/elementTypes';
 import type { LoadAssignment } from '@/app/store/slices/loadAssignmentsSlice';
 import { AssignLoadsDialog } from '@/components/editor/AssignLoadsDialog';
@@ -237,6 +238,7 @@ export function StructuralPropertyDialog({
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [assignLoadsOpen, setAssignLoadsOpen] = useState(false);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
 
   const fields = useMemo(() => getElementFields(element), [element]);
 
@@ -449,6 +451,14 @@ export function StructuralPropertyDialog({
     new Set(assignments.map((assignment) => assignment.loadCaseId)),
   );
 
+  const deleteAssignment = (id: string) => {
+    dispatch(deleteLoadAssignment(id));
+    if (editingAssignmentId === id) {
+      setEditingAssignmentId(null);
+      setAssignLoadsOpen(false);
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -613,7 +623,10 @@ export function StructuralPropertyDialog({
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setAssignLoadsOpen(true)}
+                onClick={() => {
+                  setEditingAssignmentId(null);
+                  setAssignLoadsOpen(true);
+                }}
               >
                 Assign Loads
               </Button>
@@ -630,18 +643,46 @@ export function StructuralPropertyDialog({
                     key={assignment.id}
                     className="border-b px-3 py-2 last:border-0"
                   >
-                    <div className="text-[11px] font-medium">
-                      {assignment.loadType}
-                    </div>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {loadCaseName(assignment.loadCaseId)} ·{' '}
-                      {formatLoad(assignment)}
-                    </div>
-                    {assignment.description && (
-                      <div className="mt-0.5 text-[10px] text-muted-foreground">
-                        {assignment.description}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium">
+                          {assignment.loadType}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+                          {loadCaseName(assignment.loadCaseId)} ·{' '}
+                          {formatLoad(assignment)}
+                        </div>
+                        {assignment.description && (
+                          <div className="mt-0.5 text-[10px] text-muted-foreground">
+                            {assignment.description}
+                          </div>
+                        )}
                       </div>
-                    )}
+
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[10px]"
+                          onClick={() => {
+                            setEditingAssignmentId(assignment.id);
+                            setAssignLoadsOpen(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteAssignment(assignment.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
@@ -662,8 +703,13 @@ export function StructuralPropertyDialog({
 
       <AssignLoadsDialog
         open={assignLoadsOpen}
-        onOpenChange={setAssignLoadsOpen}
+        onOpenChange={(open) => {
+          setAssignLoadsOpen(open);
+          if (!open) setEditingAssignmentId(null);
+        }}
         element={element}
+        editAssignmentId={editingAssignmentId}
+        onEditAssignmentIdChange={setEditingAssignmentId}
       />
     </>
   );
