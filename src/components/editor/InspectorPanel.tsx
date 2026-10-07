@@ -78,6 +78,22 @@ export function InspectorPanel() {
   const materialId = useAppSelector((state) => {
     const ref = selectedPropertyRefs;
 
+    // For sectioned members, the section owns the material relationship.
+    if (ref.sectionId) {
+      const linkedSection = state.properties.sections.find(
+        (section) => section.id === ref.sectionId,
+      );
+
+      if (
+        linkedSection &&
+        state.properties.materials.some(
+          (item) => item.id === linkedSection.materialId,
+        )
+      ) {
+        return linkedSection.materialId;
+      }
+    }
+
     if (ref.materialId && state.properties.materials.some((item) => item.id === ref.materialId)) {
       return ref.materialId;
     }
