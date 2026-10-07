@@ -1,16 +1,22 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppSelector } from '@/app/store/hooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TreeViewPanel } from '@/features/tree-view/TreeViewPanel';
 import { LayerPanel } from '@/features/layers/LayerPanel';
 import { PropertiesLibraryTree } from '@/components/properties/PropertiesLibraryTree';
 import { Layers, TreePine, Sliders } from 'lucide-react';
+import { PropertyEditorDialog } from '@/features/tree-view/PropertyEditorDialog';
+import type { Material, Section } from '@/app/store/slices/propertiesSlice';
 
 const normalizeName = (value: string) =>
   value.toLowerCase().replace(/[×x\s_\-]/g, '');
 
 export function InspectorPanel() {
   const shapes = useAppSelector((state) => state.drawing.shapes);
+  const [editingProperty, setEditingProperty] = useState<{
+    nodeType: 'material' | 'section';
+    data: Material | Section;
+  } | null>(null);
   const selectedIds = useAppSelector((state) => state.drawing.selectedShapeIds);
 
   const selectedPropertyRefs = useMemo(() => {
@@ -137,6 +143,18 @@ export function InspectorPanel() {
           <PropertiesLibraryTree
             selectedMaterialId={materialId}
             selectedSectionId={sectionId}
+            onEditMaterial={(material) =>
+              setEditingProperty({
+                nodeType: 'material',
+                data: material,
+              })
+            }
+            onEditSection={(section) =>
+              setEditingProperty({
+                nodeType: 'section',
+                data: section,
+              })
+            }
           />
         </TabsContent>
 
@@ -144,6 +162,15 @@ export function InspectorPanel() {
           <LayerPanel />
         </TabsContent>
       </Tabs>
+
+      <PropertyEditorDialog
+        nodeType={editingProperty?.nodeType ?? 'material'}
+        data={editingProperty?.data ?? null}
+        open={editingProperty !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingProperty(null);
+        }}
+      />
     </div>
   );
 }
