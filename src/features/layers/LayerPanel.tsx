@@ -41,15 +41,15 @@ export function LayerPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="mb-2 flex flex-col rounded-md border border-gray-200 bg-white">
       <div className="flex items-center justify-between p-3 border-b border-gray-100">
-        <h3 className="font-semibold text-sm">Drawing Layers</h3>
+        <h3 className="font-semibold text-sm">Model Drawing Layers</h3>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleAddLayer}>
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="max-h-56 overflow-y-auto p-2">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={layers.map(l => l.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-1">
