@@ -12,6 +12,8 @@ import {
   EyeOff,
   Anchor,
   Move,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 import { store } from '@/app/store';
@@ -30,6 +32,7 @@ import {
   removeStory,
   resetStoryAdjust,
   setAlignStory,
+  setStoryAlignmentLocked,
   setAllOverlays,
   setGhostSnap,
   setLinkToleranceMm,
@@ -72,12 +75,14 @@ function NumberField({
   onCommit,
   step = 1,
   width = 'w-16',
+  disabled = false,
 }: {
   label: string;
   value: number;
   onCommit: (value: number) => void;
   step?: number;
   width?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="flex items-center gap-1 text-[10px] text-gray-500">
@@ -85,6 +90,7 @@ function NumberField({
       <Input
         key={value}
         type="number"
+        disabled={disabled}
         step={step}
         defaultValue={value}
         className={`h-6 ${width} px-1 text-xs`}
@@ -185,6 +191,11 @@ function StoryRow({
             BASE
           </span>
         )}
+        {!isBase && story.alignmentLocked && (
+          <span className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-800">
+            ALIGN LOCKED
+          </span>
+        )}
 
         <Button
           variant={isActive ? 'default' : 'outline'}
@@ -197,6 +208,22 @@ function StoryRow({
           }}
         >
           {isActive ? 'Editing' : 'Edit'}
+        </Button>
+
+        <Button
+          variant={story.alignmentLocked ? 'default' : 'ghost'}
+          size="icon"
+          className="h-6 w-6"
+          title={isBase ? 'The base floor is fixed by definition' : story.alignmentLocked ? 'Unlock this floor to adjust its alignment' : 'Lock this floor after alignment'}
+          disabled={isBase}
+          onClick={() =>
+            dispatch(setStoryAlignmentLocked({
+              id: story.id,
+              locked: !story.alignmentLocked,
+            }))
+          }
+        >
+          {story.alignmentLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
         </Button>
 
         <Button
@@ -249,8 +276,8 @@ function StoryRow({
               variant={aligning ? 'default' : 'outline'}
               size="icon"
               className="h-6 w-6"
-              title={isBase ? 'The base floor is the fixed reference' : 'Drag this floor on the base-floor canvas to align it'}
-              disabled={isBase || !planSheet}
+              title={isBase ? 'The base floor is the fixed reference' : story.alignmentLocked ? 'Unlock this floor before aligning it' : 'Drag this floor on the base-floor canvas to align it'}
+              disabled={isBase || !planSheet || story.alignmentLocked}
               onClick={() => {
                 if (aligning) {
                   dispatch(setAlignStory(null));
@@ -307,6 +334,7 @@ function StoryRow({
                 label="dx"
                 value={story.adjust.dxMm}
                 step={10}
+                disabled={story.alignmentLocked}
                 onCommit={(value) =>
                   adjust({ dxMm: value })
                 }
@@ -316,6 +344,7 @@ function StoryRow({
                 label="dy"
                 value={story.adjust.dyMm}
                 step={10}
+                disabled={story.alignmentLocked}
                 onCommit={(value) =>
                   adjust({ dyMm: value })
                 }
@@ -325,6 +354,7 @@ function StoryRow({
                 label="rot°"
                 value={story.adjust.rotationDeg}
                 step={0.1}
+                disabled={story.alignmentLocked}
                 onCommit={(value) =>
                   adjust({ rotationDeg: value })
                 }
@@ -334,6 +364,7 @@ function StoryRow({
                 variant="ghost"
                 size="sm"
                 className="h-6 px-2 text-[10px]"
+                disabled={story.alignmentLocked}
                 onClick={() => dispatch(resetStoryAdjust(story.id))}
               >
                 Reset
