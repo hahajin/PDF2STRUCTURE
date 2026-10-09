@@ -10,6 +10,8 @@ import {
   setAlignStory,
   updateStory,
 } from '@/app/store/slices/storySlice';
+import { setCurrentPage } from '@/app/store/slices/pdfSlice';
+import { selectBasePlanSheet, setActivePlanSheet } from '@/app/store/slices/planSheetSlice';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -25,6 +27,8 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
   const story = useAppSelector((state) =>
     state.story.stories.find((item) => item.sheetId === sheet.id),
   );
+  const baseSheet = useAppSelector(selectBasePlanSheet);
+  const isBase = baseSheet?.id === sheet.id;
   const aligning = useAppSelector(
     (state) => !!story && state.story.alignStoryId === story.id,
   );
@@ -33,6 +37,7 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
   const opacity = Math.round((story?.overlayOpacity ?? 0.4) * 100);
 
   const toggle = (value: boolean) => {
+    if (!baseSheet || isBase) return;
     if (!story) {
       if (value) addSheetAsUnderlay(sheet);
       return;
@@ -42,6 +47,20 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
     dispatch(updateStory({ id: story.id, changes: { overlayVisible: value } }));
   };
 
+  const alignToBase = () => {
+    if (!baseSheet || isBase) return;
+    if (aligning) {
+      dispatch(setAlignStory(null));
+      return;
+    }
+
+    // The alignment canvas uses the base floor's page coordinates. Activate it
+    // before entering drag mode, without changing which sheet is the base.
+    dispatch(setCurrentPage(baseSheet.sourcePage));
+    dispatch(setActivePlanSheet(baseSheet.id));
+    startAligningSheet(sheet);
+  };
+
   return (
     <div className="mt-1.5 flex items-center gap-2 border-t border-gray-100 pt-1.5">
       <Layers className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -49,7 +68,8 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
       <Switch
         checked={on}
         onCheckedChange={toggle}
-        title="Underlay this plan beneath the active plan"
+        disabled={!baseSheet || isBase}
+        title="Show this floor as a transparent overlay on the edited floor"
       />
 
       <Slider
@@ -57,7 +77,7 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
         min={0}
         max={100}
         step={5}
-        disabled={!story}
+        disabled={!story || !baseSheet || isBase}
         value={[opacity]}
         onValueChange={([value]) =>
           story &&
@@ -78,12 +98,9 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
         variant={aligning ? 'default' : 'ghost'}
         size="icon"
         className="h-6 w-6"
-        title="Drag to align with the active plan"
-        onClick={() =>
-          aligning
-            ? dispatch(setAlignStory(null))
-            : startAligningSheet(sheet)
-        }
+        title={isBase ? 'The base floor is the fixed alignment reference' : 'Drag this floor to align it with the fixed base floor'}
+        disabled={!baseSheet || isBase}
+        onClick={alignToBase}
       >
         <Move className="h-3 w-3" />
       </Button>

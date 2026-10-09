@@ -10,7 +10,7 @@ import { useEffect, useRef } from 'react';
 import { Check, Crosshair, RotateCcw } from 'lucide-react';
 
 import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
-import { selectActivePlanSheet } from '@/app/store/slices/planSheetSlice';
+import { selectActivePlanSheet, selectBasePlanSheet } from '@/app/store/slices/planSheetSlice';
 import {
   resetStoryAdjust,
   setAlignStory,
@@ -39,7 +39,8 @@ export function StoryAlignOverlay() {
   const alignStoryId = useAppSelector((state) => state.story.alignStoryId);
   const stories = useAppSelector((state) => state.story.stories);
   const planSheets = useAppSelector((state) => state.planSheet.sheets);
-  const baseSheet = useAppSelector(selectActivePlanSheet);
+  const baseSheet = useAppSelector(selectBasePlanSheet);
+  const activeSheet = useAppSelector(selectActivePlanSheet);
   const pageSystems = useAppSelector((state) => state.pageCoordinate.pages);
   const sheetSystems = useAppSelector((state) => state.pageCoordinate.sheets);
   const displayScale = useAppSelector((state) => state.pdf.scale);
@@ -146,14 +147,15 @@ export function StoryAlignOverlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alignStoryId, pageSystems, sheetSystems, stories, planSheets]);
 
-  // Leave align mode when the base sheet changes or the story disappears.
+  // Drag deltas are measured in the base canvas's page coordinates, so always
+  // leave alignment mode if the user switches away from the designated base.
   useEffect(() => {
-    if (alignStoryId && (!story || !baseSheet || story.sheetId === baseSheet.id)) {
+    if (alignStoryId && (!story || !baseSheet || story.sheetId === baseSheet.id || activeSheet?.id !== baseSheet.id)) {
       dispatch(setAlignStory(null));
     }
-  }, [alignStoryId, story, baseSheet, dispatch]);
+  }, [alignStoryId, story, baseSheet, activeSheet?.id, dispatch]);
 
-  if (!story || !sheet || !baseSheet || story.sheetId === baseSheet.id) {
+  if (!story || !sheet || !baseSheet || story.sheetId === baseSheet.id || activeSheet?.id !== baseSheet.id) {
     return null;
   }
 

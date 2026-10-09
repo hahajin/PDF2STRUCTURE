@@ -1,6 +1,6 @@
 // src/features/stories/underlayActions.ts
 //
-// Store-level helpers for turning Plan Sheets into underlays of the active
+// Store-level helpers for turning Plan Sheets into underlays of the fixed
 // base Plan Sheet.
 
 import { store } from '@/app/store';
@@ -8,8 +8,10 @@ import { ensureSheet } from '@/app/store/slices/pageCoordinateSlice';
 import {
   addStory,
   setAlignStory,
+  updateStory,
   updateStoryAdjust,
 } from '@/app/store/slices/storySlice';
+import { updatePlanSheet } from '@/app/store/slices/planSheetSlice';
 import {
   adjustToPlace,
   baseFrameForSheet,
@@ -28,14 +30,14 @@ function cropCentre(sheet: PlanSheet) {
 
 /**
  * Adjustment that lands the centre of `sheet`'s crop on the centre of the
- * active base sheet's crop. This is the starting point for manual alignment:
+ * designated base sheet's crop. This is the starting point for manual alignment:
  * several storeys are often cropped from the same drawing page, so without
  * it a new underlay would sit wherever its crop happens to be on that page.
  */
 function centredAdjust(sheet: PlanSheet, adjSource = ZERO_ADJ) {
   const state = store.getState();
   const baseSheet = state.planSheet.sheets.find(
-    (item) => item.id === state.planSheet.activeSheetId,
+    (item) => item.id === state.planSheet.baseSheetId,
   );
 
   if (!baseSheet || baseSheet.id === sheet.id) return null;
@@ -54,7 +56,10 @@ export function addSheetAsUnderlay(sheet: PlanSheet) {
   const state = store.getState();
   const existing = state.story.stories.find((story) => story.sheetId === sheet.id);
 
-  if (existing) return existing.id;
+  if (existing) {
+    store.dispatch(updateStory({ id: existing.id, changes: { overlayVisible: true } }));
+    return existing.id;
+  }
 
   store.dispatch(
     ensureSheet({ sheetId: sheet.id, pageIndex: sheet.sourcePage }),
@@ -75,7 +80,7 @@ export function addSheetAsUnderlay(sheet: PlanSheet) {
     .story.stories.find((story) => story.sheetId === sheet.id)?.id;
 }
 
-/** Re-centre a story's underlay on the active base sheet (keeps rotation 0). */
+/** Re-centre a story's underlay on the designated base floor (keeps rotation 0). */
 export function centreUnderlayOnBase(storyId: string) {
   const state = store.getState();
   const story = state.story.stories.find((item) => item.id === storyId);
@@ -90,6 +95,8 @@ export function centreUnderlayOnBase(storyId: string) {
 
 /** Add (if needed) and start interactive alignment of a sheet's underlay. */
 export function startAligningSheet(sheet: PlanSheet) {
+  // Alignment needs the sheet to be rendered, even when it had been hidden.
+  store.dispatch(updatePlanSheet({ id: sheet.id, changes: { visible: true } }));
   const id = addSheetAsUnderlay(sheet);
   if (id) store.dispatch(setAlignStory(id));
 }

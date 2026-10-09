@@ -42,6 +42,7 @@ import {
 
 import {
   selectActivePlanSheet,
+  selectBasePlanSheet,
   selectPlanSheets,
   setActivePlanSheet,
 } from '@/app/store/slices/planSheetSlice';
@@ -63,6 +64,7 @@ import {
   summarizeLevels,
 } from './storyLinks';
 import { buildStoryModel } from './storyModel';
+import { startAligningSheet } from './underlayActions';
 
 function NumberField({
   label,
@@ -105,11 +107,13 @@ function NumberField({
 function StoryRow({
   story,
   isBase,
+  isActive,
   sourcePage,
   unscaled,
 }: {
   story: Story;
   isBase: boolean;
+  isActive: boolean;
   sourcePage: number;
   unscaled: boolean;
 }) {
@@ -117,6 +121,9 @@ function StoryRow({
 
   const aligning = useAppSelector(
     (state) => state.story.alignStoryId === story.id,
+  );
+  const planSheet = useAppSelector((state) =>
+    state.planSheet.sheets.find((item) => item.id === story.sheetId),
   );
 
   const patch = (
@@ -145,7 +152,9 @@ function StoryRow({
     <div
       className={`space-y-1.5 rounded-md border p-2 ${isBase
         ? 'border-primary/40 bg-primary/5'
-        : 'border-gray-200'}`}
+        : isActive
+          ? 'border-blue-300 bg-blue-50/40'
+          : 'border-gray-200'}`}
     >
       <div className="flex items-center gap-2">
         <input
@@ -171,9 +180,14 @@ function StoryRow({
         <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 font-mono text-[9px] text-gray-600">
           p.{sourcePage}
         </span>
+        {isBase && (
+          <span className="shrink-0 rounded bg-primary/10 px-1 py-0.5 text-[9px] font-semibold text-primary">
+            BASE
+          </span>
+        )}
 
         <Button
-          variant={isBase ? 'default' : 'outline'}
+          variant={isActive ? 'default' : 'outline'}
           size="sm"
           className="h-6 px-2 text-[10px]"
           title="Make this level the active modelling sheet"
@@ -182,7 +196,7 @@ function StoryRow({
             dispatch(setActivePlanSheet(story.sheetId));
           }}
         >
-          {isBase ? 'Base' : 'Edit'}
+          {isActive ? 'Editing' : 'Edit'}
         </Button>
 
         <Button
@@ -195,9 +209,11 @@ function StoryRow({
         </Button>
       </div>
 
-      {isBase ? (
+      {isActive ? (
         <p className="text-[10px] text-gray-500">
-          Active level - all other visible structural levels overlay on this Plan Sheet.
+          {isBase
+            ? 'This is the fixed base floor used to align the other levels.'
+            : 'This is the floor currently being edited. The designated base floor remains the alignment reference.'}
         </p>
       ) : (
         <>
@@ -233,10 +249,25 @@ function StoryRow({
               variant={aligning ? 'default' : 'outline'}
               size="icon"
               className="h-6 w-6"
-              title="Drag this plan on the canvas to align it with the base plan"
-              onClick={() =>
-                dispatch(setAlignStory(aligning ? null : story.id))
-              }
+              title={isBase ? 'The base floor is the fixed reference' : 'Drag this floor on the base-floor canvas to align it'}
+              disabled={isBase || !planSheet}
+              onClick={() => {
+                if (aligning) {
+                  dispatch(setAlignStory(null));
+                  return;
+                }
+                const state = store.getState();
+                const fixedBase = state.planSheet.sheets.find(
+                  (item) => item.id === state.planSheet.baseSheetId,
+                );
+                if (!fixedBase || !planSheet) {
+                  toast.error('Set a base floor before aligning sheets.');
+                  return;
+                }
+                dispatch(setCurrentPage(fixedBase.sourcePage));
+                dispatch(setActivePlanSheet(fixedBase.id));
+                startAligningSheet(planSheet);
+              }}
             >
               <Move className="h-3 w-3" />
             </Button>
@@ -328,6 +359,8 @@ export function StoryPanel() {
   const planSheets = useAppSelector(selectPlanSheets);
   const activeSheet = useAppSelector(selectActivePlanSheet);
   const currentSheetId = activeSheet?.id ?? null;
+  const baseSheet = useAppSelector(selectBasePlanSheet);
+  const baseSheetId = baseSheet?.id ?? null;
 
   const toleranceMm = useAppSelector(
     (state) => state.story.linkToleranceMm,
@@ -395,11 +428,11 @@ export function StoryPanel() {
     const baseStory = state.story.stories.find(
       (story) =>
         story.sheetId ===
-        state.planSheet.activeSheetId,
+        state.planSheet.baseSheetId,
     );
 
     if (!baseStory) {
-      toast.error('Create a Story from the active Plan Sheet first.');
+      toast.error('Choose a Base Floor and ensure it has a Story before pulling nodes.');
       return;
     }
 
@@ -604,9 +637,8 @@ export function StoryPanel() {
               key={story.id}
               story={story}
               sourcePage={sourcePage}
-              isBase={
-                story.sheetId === currentSheetId
-              }
+              isBase={story.sheetId === baseSheetId}
+              isActive={story.sheetId === currentSheetId}
               unscaled={unscaled}
             />
           );

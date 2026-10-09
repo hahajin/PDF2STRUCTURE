@@ -140,21 +140,23 @@ export function InspectorPanel() {
 
   return (
     <div className="h-full flex flex-col bg-editor-panel border-l border-border">
-      <Tabs defaultValue="layers" className="flex flex-col h-full">
+      <Tabs defaultValue="layer" className="flex flex-col h-full">
         <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-10 px-2 gap-1">
-          <TabsTrigger value="layers" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
-            <TreePine className="w-3.5 h-3.5" /> Structure
+          <TabsTrigger value="layer" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
+            <Layers className="w-3.5 h-3.5" /> Layer
           </TabsTrigger>
           <TabsTrigger value="properties" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
             <Sliders className="w-3.5 h-3.5" /> Properties
           </TabsTrigger>
-          <TabsTrigger value="tree" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
-            <Layers className="w-3.5 h-3.5" /> Layers
+          <TabsTrigger value="structure" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
+            <TreePine className="w-3.5 h-3.5" /> Structure
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="layers" className="flex-1 overflow-y-auto mt-0 p-2">
-          <TreeViewPanel />
+        <TabsContent value="layer" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2 space-y-2">
+          <PlanSheetPanel />
+          <StoryPanel />
+          <LayerPanel />
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2">
@@ -176,10 +178,8 @@ export function InspectorPanel() {
           />
         </TabsContent>
 
-        <TabsContent value="tree" className="flex-1 overflow-y-auto mt-0 p-2">
-          <PlanSheetPanel />
-          <StoryPanel />
-          <LayerPanel />
+        <TabsContent value="structure" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2">
+          <TreeViewPanel />
         </TabsContent>
       </Tabs>
 

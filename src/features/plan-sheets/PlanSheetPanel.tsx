@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Copy, Crop, Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, Copy, Crosshair, Crop, Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
 import {
   activatePlanSheetForPage,
@@ -7,12 +7,15 @@ import {
   duplicatePlanSheet,
   removePlanSheet,
   selectActivePlanSheet,
+  selectBasePlanSheet,
   selectPlanSheets,
   setActivePlanSheet,
+  setBasePlanSheet,
   updatePlanSheet,
 } from '@/app/store/slices/planSheetSlice';
-import { removeStory } from '@/app/store/slices/storySlice';
+import { addStory, removeStory, updateStory } from '@/app/store/slices/storySlice';
 import { setCurrentPage } from '@/app/store/slices/pdfSlice';
+import { ensureSheet, setOriginMode } from '@/app/store/slices/pageCoordinateSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -23,6 +26,7 @@ export function PlanSheetPanel() {
   const dispatch = useAppDispatch();
   const sheets = useAppSelector(selectPlanSheets);
   const active = useAppSelector(selectActivePlanSheet);
+  const base = useAppSelector(selectBasePlanSheet);
   const stories = useAppSelector((state) => state.story.stories);
   const currentPage = useAppSelector((state) => state.pdf.currentPage);
 
@@ -60,6 +64,40 @@ export function PlanSheetPanel() {
 
     dispatch(setCurrentPage(sheet.sourcePage));
     dispatch(setActivePlanSheet(sheet.id));
+  };
+
+  const setAsBase = (sheetId: string) => {
+    const sheet = sheets.find((item) => item.id === sheetId);
+    if (!sheet || sheet.role !== 'structural') return;
+
+    dispatch(ensureSheet({ sheetId: sheet.id, pageIndex: sheet.sourcePage }));
+    const existingStory = stories.find((story) => story.sheetId === sheet.id);
+    if (existingStory) {
+      dispatch(updateStory({ id: existingStory.id, changes: { overlayVisible: true } }));
+    } else {
+      dispatch(addStory({
+        sheetId: sheet.id,
+        pageIndex: sheet.sourcePage,
+        name: sheet.name,
+        overlayVisible: true,
+      }));
+    }
+
+    dispatch(setBasePlanSheet(sheet.id));
+    dispatch(setCurrentPage(sheet.sourcePage));
+    dispatch(setActivePlanSheet(sheet.id));
+    toast.success('Base floor set to ' + sheet.name + '.');
+  };
+
+  const setCommonOrigin = (sheetId: string) => {
+    const sheet = sheets.find((item) => item.id === sheetId);
+    if (!sheet) return;
+
+    dispatch(ensureSheet({ sheetId: sheet.id, pageIndex: sheet.sourcePage }));
+    dispatch(setCurrentPage(sheet.sourcePage));
+    dispatch(setActivePlanSheet(sheet.id));
+    dispatch(setOriginMode(true));
+    toast.info('Click the same building grid intersection or reference point on this floor. Repeat for each floor to give them a shared origin.');
   };
 
   const deleteSheet = (sheetId: string) => {
@@ -103,9 +141,9 @@ export function PlanSheetPanel() {
       <div className="flex items-center justify-between border-b border-gray-100 p-2">
         <div>
           <h3 className="text-sm font-semibold">Plan Sheets</h3>
-          <p className="text-[10px] text-muted-foreground">
-            Cropped views of source PDF pages. Select one as the base, then
-            underlay the others to align storeys.
+          <p className="text-[10px] leading-4 text-muted-foreground">
+            Crop each floor from the PDF. Set a fixed base floor, compare other
+            sheets with opacity, align them, then set the same origin on every floor.
           </p>
         </div>
 
@@ -130,13 +168,20 @@ export function PlanSheetPanel() {
       <div className="space-y-1.5 p-2">
         {ordered.length === 0 && (
           <div className="rounded-md border border-dashed p-3 text-[11px] leading-4 text-muted-foreground">
-            No Plan Sheets yet. Use Crop Plan to extract a floor from any PDF
-            page. The original PDF remains unchanged.
+            No floor sheets yet. Open a PDF, navigate to a floor plan, then use
+            + to crop it. The original PDF remains unchanged.
+          </div>
+        )}
+        {ordered.length > 0 && !base && (
+          <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-[10px] leading-4 text-amber-800">
+            Step 1: choose a structural floor as the <strong>Base Floor</strong>.
+            This reference stays fixed while you switch between floors to model.
           </div>
         )}
 
         {ordered.map((sheet) => {
           const isActive = active?.id === sheet.id;
+          const isBase = base?.id === sheet.id;
           const isEditing = editingId === sheet.id;
 
           return (
@@ -175,6 +220,12 @@ export function PlanSheetPanel() {
                   )}
                 </div>
 
+                {isBase && (
+                  <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">BASE</span>
+                )}
+                {isActive && (
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">EDIT</span>
+                )}
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">
                   p.{sheet.sourcePage}
                 </span>
@@ -207,6 +258,28 @@ export function PlanSheetPanel() {
                 </span>
 
                 <div className="flex items-center gap-0.5">
+                  <Button
+                    variant={isBase ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    title="Set this structural floor as the fixed alignment base"
+                    disabled={sheet.role !== 'structural'}
+                    onClick={() => setAsBase(sheet.id)}
+                  >
+                    {isBase ? <Check className="mr-1 h-3 w-3" /> : null}
+                    {isBase ? 'Base' : 'Set base'}
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    title="Click to set the common origin on this floor"
+                    onClick={() => setCommonOrigin(sheet.id)}
+                  >
+                    <Crosshair className="h-3 w-3" />
+                  </Button>
+
                   <Button
                     variant="ghost"
                     size="icon"
@@ -249,7 +322,7 @@ export function PlanSheetPanel() {
                 </div>
               </div>
 
-              {/* Underlay this sheet beneath the active (base) sheet */}
+              {/* Overlays are shown on the currently edited floor; alignment always targets the fixed base floor. */}
               {!isActive && active && <UnderlayControls sheet={sheet} />}
             </div>
           );

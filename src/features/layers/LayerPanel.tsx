@@ -43,7 +43,7 @@ export function LayerPanel() {
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center justify-between p-3 border-b border-gray-100">
-        <h3 className="font-semibold text-sm">Layer Management</h3>
+        <h3 className="font-semibold text-sm">Drawing Layers</h3>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleAddLayer}>
           <Plus className="h-3.5 w-3.5" />
         </Button>
