@@ -148,15 +148,22 @@ export function InspectorPanel() {
           <TabsTrigger value="properties" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
             <Sliders className="w-3.5 h-3.5" /> Properties
           </TabsTrigger>
-          <TabsTrigger value="structure" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
-            <TreePine className="w-3.5 h-3.5" /> Structure
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="layer" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2 space-y-2">
           <PlanSheetPanel />
           <StoryPanel />
           <LayerPanel />
+
+          <details className="rounded-md border border-gray-200 bg-white">
+            <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-xs font-semibold hover:bg-muted/30">
+              <TreePine className="h-3.5 w-3.5" /> Structure Model Tree
+              <span className="ml-auto text-[10px] font-normal text-muted-foreground">Expand</span>
+            </summary>
+            <div className="border-t border-gray-100 p-2">
+              <TreeViewPanel />
+            </div>
+          </details>
         </TabsContent>
 
         <TabsContent value="properties" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2">
@@ -178,9 +185,6 @@ export function InspectorPanel() {
           />
         </TabsContent>
 
-        <TabsContent value="structure" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2">
-          <TreeViewPanel />
-        </TabsContent>
       </Tabs>
 
       <PropertyEditorDialog
