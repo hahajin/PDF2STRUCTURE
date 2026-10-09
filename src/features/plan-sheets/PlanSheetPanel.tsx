@@ -19,7 +19,6 @@ import { ensureSheet, setOriginMode } from '@/app/store/slices/pageCoordinateSli
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { UnderlayControls } from './UnderlayControls';
 import { toast } from 'sonner';
 
 export function PlanSheetPanel() {
@@ -337,8 +336,6 @@ export function PlanSheetPanel() {
                 </div>
               </div>
 
-              {/* Overlays are shown on the currently edited floor; alignment always targets the fixed base floor. */}
-              {!isActive && active && <UnderlayControls sheet={sheet} />}
             </div>
           );
         })}
