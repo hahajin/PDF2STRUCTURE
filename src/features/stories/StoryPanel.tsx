@@ -191,11 +191,6 @@ function StoryRow({
             BASE
           </span>
         )}
-        {!isBase && story.alignmentLocked && (
-          <span className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-800">
-            ALIGN LOCKED
-          </span>
-        )}
 
         <Button
           variant={isActive ? 'default' : 'outline'}
