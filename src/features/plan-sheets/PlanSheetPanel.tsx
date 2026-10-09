@@ -13,7 +13,7 @@ import {
   setBasePlanSheet,
   updatePlanSheet,
 } from '@/app/store/slices/planSheetSlice';
-import { addStory, removeStory, updateStory } from '@/app/store/slices/storySlice';
+import { addStory, removeStory, updateStory, updateStoryAdjust } from '@/app/store/slices/storySlice';
 import { setCurrentPage } from '@/app/store/slices/pdfSlice';
 import { ensureSheet, setOriginMode } from '@/app/store/slices/pageCoordinateSlice';
 import { Button } from '@/components/ui/button';
@@ -70,17 +70,28 @@ export function PlanSheetPanel() {
     const sheet = sheets.find((item) => item.id === sheetId);
     if (!sheet || sheet.role !== 'structural') return;
 
-    dispatch(ensureSheet({ sheetId: sheet.id, pageIndex: sheet.sourcePage }));
-    const existingStory = stories.find((story) => story.sheetId === sheet.id);
-    if (existingStory) {
-      dispatch(updateStory({ id: existingStory.id, changes: { overlayVisible: true } }));
-    } else {
-      dispatch(addStory({
-        sheetId: sheet.id,
-        pageIndex: sheet.sourcePage,
-        name: sheet.name,
-        overlayVisible: true,
-      }));
+    // A structural Plan Sheet represents a floor in the model. Initialise a
+    // Story for every structural sheet now, so opacity and common-origin
+    // operations are available even when floors are added in sequence.
+    for (const floor of sheets.filter((item) => item.role === 'structural')) {
+      dispatch(ensureSheet({ sheetId: floor.id, pageIndex: floor.sourcePage }));
+      const existingStory = stories.find((story) => story.sheetId === floor.id);
+      if (existingStory) {
+        if (floor.id === sheet.id) {
+          dispatch(updateStory({ id: existingStory.id, changes: { overlayVisible: true, name: floor.name } }));
+          dispatch(updateStoryAdjust({
+            id: existingStory.id,
+            changes: { dxMm: 0, dyMm: 0, rotationDeg: 0 },
+          }));
+        }
+      } else {
+        dispatch(addStory({
+          sheetId: floor.id,
+          pageIndex: floor.sourcePage,
+          name: floor.name,
+          overlayVisible: floor.id === sheet.id,
+        }));
+      }
     }
 
     dispatch(setBasePlanSheet(sheet.id));
@@ -91,13 +102,16 @@ export function PlanSheetPanel() {
 
   const setCommonOrigin = (sheetId: string) => {
     const sheet = sheets.find((item) => item.id === sheetId);
-    if (!sheet) return;
+    if (!sheet || !base || sheet.id !== base.id) {
+      toast.error('Choose the fixed Base Floor to define the shared origin.');
+      return;
+    }
 
     dispatch(ensureSheet({ sheetId: sheet.id, pageIndex: sheet.sourcePage }));
     dispatch(setCurrentPage(sheet.sourcePage));
     dispatch(setActivePlanSheet(sheet.id));
     dispatch(setOriginMode(true));
-    toast.info('Click the same building grid intersection or reference point on this floor. Repeat for each floor to give them a shared origin.');
+    toast.info('Click one point on the Base Floor. Its corresponding position will be mapped to all structural floor sheets.');
   };
 
   const deleteSheet = (sheetId: string) => {
@@ -274,7 +288,8 @@ export function PlanSheetPanel() {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
-                    title="Click to set the common origin on this floor"
+                    title="Define one shared origin for all structural floors (Base Floor only)"
+                    disabled={!base || !isBase}
                     onClick={() => setCommonOrigin(sheet.id)}
                   >
                     <Crosshair className="h-3 w-3" />

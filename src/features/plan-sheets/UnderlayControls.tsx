@@ -37,7 +37,7 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
   const opacity = Math.round((story?.overlayOpacity ?? 0.4) * 100);
 
   const toggle = (value: boolean) => {
-    if (!baseSheet || isBase) return;
+    if (!baseSheet) return;
     if (!story) {
       if (value) addSheetAsUnderlay(sheet);
       return;
@@ -68,7 +68,7 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
       <Switch
         checked={on}
         onCheckedChange={toggle}
-        disabled={!baseSheet || isBase}
+        disabled={!baseSheet}
         title="Show this floor as a transparent overlay on the edited floor"
       />
 
@@ -77,7 +77,7 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
         min={0}
         max={100}
         step={5}
-        disabled={!story || !baseSheet || isBase}
+        disabled={!story || !baseSheet}
         value={[opacity]}
         onValueChange={([value]) =>
           story &&
