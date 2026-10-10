@@ -2,11 +2,10 @@ import { useMemo, useState } from 'react';
 import { useAppSelector } from '@/app/store/hooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TreeViewPanel } from '@/features/tree-view/TreeViewPanel';
-import { LayerPanel } from '@/features/layers/LayerPanel';
-import { StoryPanel } from '@/features/stories/StoryPanel';
+import { StoreyPanel } from '@/features/storeys/StoreyPanel';
 import { PlanSheetPanel } from '@/features/plan-sheets/PlanSheetPanel';
 import { PropertiesLibraryTree } from '@/components/properties/PropertiesLibraryTree';
-import { Layers, TreePine, Sliders } from 'lucide-react';
+import { Building2, TreePine, Sliders } from 'lucide-react';
 import { PropertyEditorDialog } from '@/features/tree-view/PropertyEditorDialog';
 import type { Material, Section } from '@/app/store/slices/propertiesSlice';
 
@@ -140,10 +139,10 @@ export function InspectorPanel() {
 
   return (
     <div className="h-full flex flex-col bg-editor-panel border-l border-border">
-      <Tabs defaultValue="layer" className="flex flex-col h-full">
+      <Tabs defaultValue="storey" className="flex flex-col h-full">
         <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-10 px-2 gap-1">
-          <TabsTrigger value="layer" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
-            <Layers className="w-3.5 h-3.5" /> Layer
+          <TabsTrigger value="storey" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
+            <Building2 className="w-3.5 h-3.5" /> Storey
           </TabsTrigger>
           <TabsTrigger value="structure" className="text-xs gap-1.5 data-[state=active]:bg-editor-active data-[state=active]:text-accent">
             <TreePine className="w-3.5 h-3.5" /> Structure
@@ -153,11 +152,9 @@ export function InspectorPanel() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="layer" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2 space-y-2">
+        <TabsContent value="storey" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2 space-y-2">
           <PlanSheetPanel />
-          <StoryPanel />
-          <LayerPanel />
-
+          <StoreyPanel />
         </TabsContent>
 
         <TabsContent value="structure" className="flex-1 min-h-0 overflow-y-auto mt-0 p-2">

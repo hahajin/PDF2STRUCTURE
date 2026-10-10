@@ -4,7 +4,7 @@
 // base Plan Sheet.
 
 import { store } from '@/app/store';
-import { ensureSheet } from '@/app/store/slices/pageCoordinateSlice';
+import { ensureSheet, moveSheetOrigin } from '@/app/store/slices/pageCoordinateSlice';
 import {
   addStory,
   setAlignStory,
@@ -15,7 +15,9 @@ import { updatePlanSheet } from '@/app/store/slices/planSheetSlice';
 import {
   adjustToPlace,
   baseFrameForSheet,
+  foldAdjustIntoOrigin,
   frameForSheet,
+  frameForStory,
   planSheetForStory,
   ZERO_ADJ,
 } from '@/core/coordinate/storyTransform';
@@ -51,6 +53,37 @@ function centredAdjust(sheet: PlanSheet, adjSource = ZERO_ADJ) {
   return adjustToPlace(cropCentre(sheet), cropCentre(baseSheet), from, base);
 }
 
+/**
+ * Move a sheet's translation into its own origin marker.
+ *
+ * The shared origin is set on the base sheet only. Every other sheet keeps its
+ * origin marker on that same physical point, so translating a sheet moves its
+ * own marker instead of leaving a translation offset behind.
+ */
+export function foldStoryAdjust(storyId: string) {
+  const state = store.getState();
+  const story = state.story.stories.find((item) => item.id === storyId);
+  if (!story) return;
+
+  const frame = frameForStory(
+    state.pageCoordinate.pages,
+    state.pageCoordinate.sheets,
+    story,
+    state.planSheet.sheets,
+  );
+
+  const folded = foldAdjustIntoOrigin(frame.cs, frame.adj);
+
+  store.dispatch(
+    moveSheetOrigin({
+      sheetId: story.sheetId,
+      x: folded.origin.x,
+      y: folded.origin.y,
+    }),
+  );
+  store.dispatch(updateStoryAdjust({ id: story.id, changes: folded.adjust }));
+}
+
 /** Make a Plan Sheet an (initially centred) visible underlay, creating its Story if needed. */
 export function addSheetAsUnderlay(sheet: PlanSheet) {
   const state = store.getState();
@@ -75,9 +108,13 @@ export function addSheetAsUnderlay(sheet: PlanSheet) {
     }),
   );
 
-  return store
+  const created = store
     .getState()
     .story.stories.find((story) => story.sheetId === sheet.id)?.id;
+
+  if (created) foldStoryAdjust(created);
+
+  return created;
 }
 
 /** Re-centre a story's underlay on the designated base floor (keeps rotation 0). */
@@ -90,7 +127,10 @@ export function centreUnderlayOnBase(storyId: string) {
   if (!sheet) return;
 
   const adjust = centredAdjust(sheet);
-  if (adjust) store.dispatch(updateStoryAdjust({ id: story.id, changes: adjust }));
+  if (adjust) {
+    store.dispatch(updateStoryAdjust({ id: story.id, changes: adjust }));
+    foldStoryAdjust(story.id);
+  }
 }
 
 /** Add (if needed) and start interactive alignment of a sheet's underlay. */

@@ -1,13 +1,16 @@
 // src/features/plan-sheets/UnderlayControls.tsx
 //
-// Per-Plan-Sheet underlay controls: toggle the sheet as an underlay of the
-// active base sheet, set its opacity, and drag it into alignment.
+// Per-Plan-Sheet alignment controls. Every sheet except the base sheet is a
+// "super-sheet": it is shown as a transparent underlay of the sheet being
+// edited and is translated until it sits right against the shared origin that
+// was set on the base sheet.
 
-import { Layers, Move } from 'lucide-react';
+import { Layers, Lock, Move, Unlock } from 'lucide-react';
 
 import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
 import {
   setAlignStory,
+  setStoryAlignmentLocked,
   updateStory,
 } from '@/app/store/slices/storySlice';
 import { setCurrentPage } from '@/app/store/slices/pdfSlice';
@@ -35,6 +38,7 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
 
   const on = !!story?.overlayVisible;
   const opacity = Math.round((story?.overlayOpacity ?? 0.4) * 100);
+  const locked = !!story?.alignmentLocked;
 
   const toggle = (value: boolean) => {
     if (!baseSheet) return;
@@ -48,7 +52,7 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
   };
 
   const alignToBase = () => {
-    if (!baseSheet || isBase) return;
+    if (!baseSheet || isBase || locked) return;
     if (aligning) {
       dispatch(setAlignStory(null));
       return;
@@ -62,48 +66,91 @@ export function UnderlayControls({ sheet }: { sheet: PlanSheet }) {
   };
 
   return (
-    <div className="mt-1.5 flex items-center gap-2 border-t border-gray-100 pt-1.5">
-      <Layers className="h-3 w-3 shrink-0 text-muted-foreground" />
+    <div className="mt-1.5 space-y-1.5 border-t border-gray-100 pt-1.5">
+      <div className="flex items-center gap-2">
+        <Layers className="h-3 w-3 shrink-0 text-muted-foreground" />
 
-      <Switch
-        checked={on}
-        onCheckedChange={toggle}
-        disabled={!baseSheet}
-        title="Show this floor as a transparent overlay on the edited floor"
-      />
+        <Switch
+          checked={on}
+          onCheckedChange={toggle}
+          disabled={!baseSheet}
+          title="Show this sheet as a transparent overlay on the sheet being edited"
+        />
 
-      <Slider
-        className="flex-1"
-        min={0}
-        max={100}
-        step={5}
-        disabled={!story || !baseSheet}
-        value={[opacity]}
-        onValueChange={([value]) =>
-          story &&
-          dispatch(
-            updateStory({
-              id: story.id,
-              changes: { overlayOpacity: value / 100 },
-            }),
-          )
-        }
-      />
+        <Slider
+          className="flex-1"
+          min={0}
+          max={100}
+          step={5}
+          disabled={!story || !baseSheet}
+          value={[opacity]}
+          onValueChange={([value]) =>
+            story &&
+            dispatch(
+              updateStory({
+                id: story.id,
+                changes: { overlayOpacity: value / 100 },
+              }),
+            )
+          }
+        />
 
-      <span className="w-8 text-right text-[10px] text-muted-foreground">
-        {opacity}%
-      </span>
+        <span className="w-8 text-right text-[10px] text-muted-foreground">
+          {opacity}%
+        </span>
 
-      <Button
-        variant={aligning ? 'default' : 'ghost'}
-        size="icon"
-        className="h-6 w-6"
-        title={isBase ? 'The base floor is the fixed alignment reference' : 'Drag this floor to align it with the fixed base floor'}
-        disabled={!baseSheet || isBase}
-        onClick={alignToBase}
-      >
-        <Move className="h-3 w-3" />
-      </Button>
+        <Button
+          variant={aligning ? 'default' : 'ghost'}
+          size="icon"
+          className="h-6 w-6"
+          title={
+            locked
+              ? 'Unlock this sheet to align it again'
+              : 'Translate this sheet on the base sheet until it is in the right position'
+          }
+          disabled={!baseSheet || isBase || locked}
+          onClick={alignToBase}
+        >
+          <Move className="h-3 w-3" />
+        </Button>
+
+        <Button
+          variant={locked ? 'default' : 'ghost'}
+          size="icon"
+          className="h-6 w-6"
+          title={locked ? 'Unlock alignment' : 'Lock alignment once the sheet is in position'}
+          disabled={!story}
+          onClick={() =>
+            story &&
+            dispatch(setStoryAlignmentLocked({ id: story.id, locked: !locked }))
+          }
+        >
+          {locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+        </Button>
+      </div>
+
+      {story && (
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <input
+            type="color"
+            value={story.tint}
+            onChange={(event) =>
+              dispatch(updateStory({ id: story.id, changes: { tint: event.target.value } }))
+            }
+            className="h-4 w-4 shrink-0 cursor-pointer rounded border border-gray-200 p-0"
+            title="Overlay colour"
+          />
+          <label className="flex items-center gap-1.5">
+            <Switch
+              checked={story.showGhostElements}
+              onCheckedChange={(value) =>
+                dispatch(updateStory({ id: story.id, changes: { showGhostElements: value } }))
+              }
+            />
+            Show its members
+          </label>
+        </div>
+      )}
     </div>
   );
 }

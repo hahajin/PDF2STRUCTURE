@@ -19,6 +19,8 @@ import { ensureSheet, setOriginMode } from '@/app/store/slices/pageCoordinateSli
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { storeysUsingSheet } from '@/features/storeys/storeyModel';
+import { UnderlayControls } from './UnderlayControls';
 import { toast } from 'sonner';
 
 export function PlanSheetPanel() {
@@ -27,6 +29,7 @@ export function PlanSheetPanel() {
   const active = useAppSelector(selectActivePlanSheet);
   const base = useAppSelector(selectBasePlanSheet);
   const stories = useAppSelector((state) => state.story.stories);
+  const storeys = useAppSelector((state) => state.storey.storeys);
   const currentPage = useAppSelector((state) => state.pdf.currentPage);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -155,8 +158,9 @@ export function PlanSheetPanel() {
         <div>
           <h3 className="text-sm font-semibold">Plan Sheets</h3>
           <p className="text-[10px] leading-4 text-muted-foreground">
-            Crop each floor from the PDF. Set a fixed base floor, compare other
-            sheets with opacity, align them, then set the same origin on every floor.
+            1. Crop each floor plan from the PDF (several per page are fine).
+            2. Pick one as the base sheet and set the shared origin on it.
+            3. Translate the other sheets onto it. Then define the storeys in the list below.
           </p>
         </div>
 
@@ -187,8 +191,8 @@ export function PlanSheetPanel() {
         )}
         {ordered.length > 0 && !base && (
           <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-[10px] leading-4 text-amber-800">
-            Step 1: choose a structural floor as the <strong>Base Floor</strong>.
-            This reference stays fixed while you switch between floors to model.
+            Choose a structural sheet as the <strong>Base Sheet</strong>. It stays
+            fixed; the shared origin is set on it and every other sheet is aligned to it.
           </div>
         )}
 
@@ -196,6 +200,7 @@ export function PlanSheetPanel() {
           const isActive = active?.id === sheet.id;
           const isBase = base?.id === sheet.id;
           const isEditing = editingId === sheet.id;
+          const usedBy = storeysUsingSheet(storeys, sheet.id);
 
           return (
             <div
@@ -266,8 +271,16 @@ export function PlanSheetPanel() {
               </div>
 
               <div className="mt-1.5 flex items-center justify-between gap-1">
-                <span className="text-[10px] capitalize text-muted-foreground">
-                  {sheet.role}
+                <span className="min-w-0 truncate text-[10px] text-muted-foreground">
+                  <span className="capitalize">{sheet.role}</span>
+                  {usedBy.length > 0 && (
+                    <span title={usedBy.map((storey) => storey.name).join(', ')}>
+                      {' · '}
+                      {usedBy.length <= 2
+                        ? usedBy.map((storey) => storey.name).join(', ')
+                        : `${usedBy.length} storeys`}
+                    </span>
+                  )}
                 </span>
 
                 <div className="flex items-center gap-0.5">
@@ -287,7 +300,7 @@ export function PlanSheetPanel() {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
-                    title="Define one shared origin for all structural floors (Base Floor only)"
+                    title="Set the shared origin for all structural sheets (base sheet only)"
                     disabled={!base || !isBase}
                     onClick={() => setCommonOrigin(sheet.id)}
                   >
@@ -336,6 +349,17 @@ export function PlanSheetPanel() {
                 </div>
               </div>
 
+
+              {sheet.role === 'structural' && base && !isBase && (
+                <UnderlayControls sheet={sheet} />
+              )}
+
+              {isBase && (
+                <p className="mt-1.5 border-t border-gray-100 pt-1.5 text-[10px] leading-4 text-muted-foreground">
+                  Fixed reference. Use the crosshair to set the shared origin; the other
+                  sheets are translated onto this one.
+                </p>
+              )}
             </div>
           );
         })}

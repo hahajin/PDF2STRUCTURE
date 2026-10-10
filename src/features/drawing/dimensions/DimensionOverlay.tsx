@@ -8,8 +8,6 @@ export function DimensionOverlay() {
   const displayScale = useAppSelector((state) => state.pdf.scale);
   const currentPage = useAppSelector((state) => state.pdf.currentPage);
   const shapes = useAppSelector((state) => selectShapesByPage(state, currentPage));
-  const showDimensions = useAppSelector((state) => state.layer.showDimensions);
-  const layers = useAppSelector((state) => state.layer.layers);
   const scaleNumerator = useAppSelector((state) => state.drawing.scaleNumerator);
   const scaleDenominator = useAppSelector((state) => state.drawing.scaleDenominator);
   const scaleUnit = useAppSelector((state) => state.drawing.scaleUnit);
@@ -35,7 +33,7 @@ export function DimensionOverlay() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !showDimensions) return;
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -53,21 +51,15 @@ export function DimensionOverlay() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(displayScale * dpr, 0, 0, displayScale * dpr, 0, 0);
 
-      const visibleLayerIds = new Set(
-        layers.filter((layer) => layer.visible).map((layer) => layer.id),
-      );
-
       shapes.forEach((shape) => {
-        if (visibleLayerIds.has(shape.layerId)) {
-          renderDimension(
-            ctx,
-            shape,
-            true,
-            scaleNumerator,
-            scaleDenominator,
-            scaleUnit,
-          );
-        }
+        renderDimension(
+          ctx,
+          shape,
+          true,
+          scaleNumerator,
+          scaleDenominator,
+          scaleUnit,
+        );
       });
     });
 
@@ -75,16 +67,12 @@ export function DimensionOverlay() {
   }, [
     shapes,
     displayScale,
-    showDimensions,
-    layers,
     currentPage,
     scaleNumerator,
     scaleDenominator,
     scaleUnit,
     canvasSizeVersion,
   ]);
-
-  if (!showDimensions) return null;
 
   return (
     <canvas
